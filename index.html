@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HJ Rope Master Inc. - Time Tracker</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    @font-face {
+      font-family: 'Digital dream Fat';
+      src: url('https://semicon.github.io/fonts/DigitaldreamFat.woff2') format('woff2'),
+        url('https://semicon.github.io/fonts/DigitaldreamFat.woff') format('woff');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background: url("https://semicon.github.io/img/bgTimeTracker.jpg") no-repeat center center fixed;
+      background-size: cover;
+      color: #ffffff;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .wrapper {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(1px);
+      border-radius: 30px;
+      padding: 30px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 10px 10px 0px rgba(10, 10, 10, 0.3);
+      margin: 20px 0;
+    }
+
+    .clock {
+      font-family: 'Digital dream Fat', sans-serif;
+      font-size: 2.5rem;
+      color: cyan;
+      text-shadow: 10px 10px 10px cyan, 10px 10px 20px teal;
+      margin: 20px 0;
+    }
+
+    .blessing {
+      margin-top: 10px;
+      font-style: italic;
+      font-size: 1rem;
+    }
+
+    .logo-container {
+      margin-bottom: 30px;
+    }
+
+    .logo-image {
+      max-width: 250px;
+      height: auto;
+      animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+
+    .loading-message {
+      display: none;
+      color: White;
+      font-size: 0.9rem;
+      font-weight: normal;
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
+      transform: perspective(200px) rotateX(10deg) rotateY(10deg);
+      animation: spin 4s infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: perspective(500px) rotateX(15deg) rotateY(10deg);
+      }
+      50% {
+        transform: perspective(500px) rotateX(15deg) rotateY(45deg);
+      }
+      100% {
+        transform: perspective(500px) rotateX(15deg) rotateY(10deg);
+      }
+    }
+
+    .stats-container {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      padding: 15px;
+      margin: 15px 0;
+      font-size: 0.9rem;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 5px 0;
+    }
+
+    .employee-status {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      padding: 15px;
+      margin: 15px 0;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-clocked-in {
+      background-color: #28a745;
+    }
+
+    .status-clocked-out {
+      background-color: #6c757d;
+    }
+
+    .status-error {
+      background-color: #dc3545;
+    }
+
+    .btn {
+      margin: 5px;
+      padding: 12px 25px;
+      font-weight: bold;
+      border-radius: 25px;
+      transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    .btn-success {
+      background: linear-gradient(45deg, #28a745, #20c997);
+      border: none;
+    }
+
+    .btn-danger {
+      background: linear-gradient(45deg, #dc3545, #e30000);
+      border: none;
+    }
+
+    .btn-info {
+      background: linear-gradient(45deg, #17a2b8, #6f42c1);
+      border: none;
+    }
+
+    .form-control {
+      border-radius: 15px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      padding: 12px 15px;
+    }
+
+    .form-control:focus {
+      border-color: cyan;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    .form-control option {
+      background: #333;
+      color: #fff;
+    }
+
+    .alert {
+      border-radius: 15px;
+      margin: 15px 0;
+    }
+
+    .refresh-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      color: #fff;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .refresh-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: rotate(180deg);
+    }
+
+    @media (max-width: 768px) {
+      .wrapper {
+        width: 95%;
+        padding: 20px;
+      }
+      
+      .clock {
+        font-size: 2rem;
+      }
+      
+      .logo-image {
+        max-width: 200px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Refresh Button -->
+  <button class="refresh-btn" onclick="refreshData()" title="Refresh Data">
+    ↻
+  </button>
+
+  <!-- Logo Section -->
+  <div class="logo-container">
+    <img src="https://hjropemaster.com.ph/hjrmi/cropped-hjrmi-png/" alt="HJ Rope Master Logo" class="logo-image">
+  </div>
+
+  <!-- Attendance Time Tracker Section -->
+  <div class="wrapper">
+    <h3 style="color: #ffffff; text-align: center; margin-bottom: 20px;">Attendance Time Clock</h3>
+    <span id="MyClockDisplay" class="clock">00:00:00</span>
+
+    <!-- Statistics Display -->
+    <div id="statsContainer" class="stats-container">
+      <div class="stats-row">
+        <span>Today's Records:</span>
+        <span id="todayRecords">Loading...</span>
+      </div>
+      <div class="stats-row">
+        <span>Total Records:</span>
+        <span id="totalRecords">Loading...</span>
+      </div>
+      <div class="stats-row">
+        <span>Active Employees:</span>
+        <span id="activeEmployees">Loading...</span>
+      </div>
+      <div class="stats-row">
+        <span>Last Update:</span>
+        <span id="lastUpdate">Loading...</span>
+      </div>
+    </div>
+
+    <form id="attendanceForm">
+      <div class="form-group mt-4">
+        <label for="employeeId" style="color: #fff; margin-bottom: 10px;">Select Employee ID</label>
+        <select class="form-control" id="employeeId" onchange="checkEmployeeStatus()">
+          <option value="" disabled selected>Select Employee ID</option>
+          <!-- Employee IDs will be dynamically populated here -->
+        </select>
+      </div>
+
+      <!-- Employee Status Display -->
+      <div id="employeeStatus" class="employee-status">
+        <div id="statusContent">
+          <!-- Status content will be populated here -->
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button type="button" id="clockInBtn" class="btn" onclick="clockIn()">
+          🕐 Clock In
+        </button>
+        <button type="button" id="clockOutBtn" class="btn" onclick="clockOut()">
+          🕕 Clock Out
+        </button>
+      </div>
+      
+      <div class="mt-3">
+        <button type="button" class="btn btn-info" onclick="refreshData()">
+          📊 Refresh Stats
+        </button>
+      </div>
+    </form>
+
+    <!-- Loading message with 3D effect -->
+    <div id="loadingMessage" class="loading-message">
+      <div>Please wait, processing your request...</div>
+      <div style="font-size: 0.8rem; margin-top: 5px;">
+        "SUCCESS" will appear when completed
+      </div>
+      <div style="font-size: 0.8rem; font-style: italic;">
+        Pakihintay, habang ipinoproseso ang inyong kahilingan...
+      </div>
+    </div>
+
+    <!-- Alert container for messages -->
+    <div id="alertContainer"></div>
+  </div>
+
+  <!-- Blessing Section -->
+  <div style="margin-top: 20px; text-align: center;">
+    <h3>God Bless Us ALL</h3>
+    <p class="blessing">May we find success, health, and happiness in all our endeavors.</p>
+  </div>
+
+  <script>
+    // Global variables
+    let currentStats = {};
+    let refreshInterval;
+
+    // Display current time
+    function showTime() {
+      const date = new Date();
+      let h = date.getHours();
+      let m = date.getMinutes();
+      let s = date.getSeconds();
+      const dot = s % 2 === 0 ? ':' : '\xa0';
+
+      h = h < 10 ? "0" + h : h;
+      m = m < 10 ? "0" + m : m;
+      s = s < 10 ? "0" + s : s;
+
+      const time = `${h}${dot}${m}${dot}${s}`;
+      document.getElementById("MyClockDisplay").innerText = time;
+      setTimeout(showTime, 1000);
+    }
+
+    // Initialize the application
+    function initializeApp() {
+      showTime();
+      loadEmployeeIDs();
+      loadAttendanceStats();
+      loadClockStatus(); // New function call
+      
+      // Set up auto-refresh every 30 seconds
+      refreshInterval = setInterval(loadAttendanceStats, 30000);
+    }
+
+    // Fetch Employee IDs from Google Sheets
+    function loadEmployeeIDs() {
+      google.script.run
+        .withSuccessHandler(function(employeeList) {
+          const employeeSelect = document.getElementById('employeeId');
+          const currentValue = employeeSelect.value;
+          
+          // Clear existing options
+          employeeSelect.innerHTML = '<option value="" disabled selected>Select Employee ID</option>';
+          
+          // Populate dropdown with employee IDs
+          employeeList.forEach(function(employeeId) {
+            const option = document.createElement('option');
+            option.value = employeeId;
+            option.textContent = employeeId;
+            employeeSelect.appendChild(option);
+          });
+          
+          // Restore previous selection if it exists
+          if (currentValue && employeeList.includes(currentValue)) {
+            employeeSelect.value = currentValue;
+            checkEmployeeStatus();
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error loading employee IDs:', error);
+          showAlert('Error loading employee list. Please refresh the page.', 'danger');
+        })
+        .getEmployeeIDs();
+    }
+
+    // Load attendance statistics
+    function loadAttendanceStats() {
+      google.script.run
+        .withSuccessHandler(function(stats) {
+          currentStats = stats;
+          updateStatsDisplay(stats);
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error loading stats:', error);
+          updateStatsDisplay({
+            totalRecords: 'Error',
+            todayRecords: 'Error',
+            activeEmployees: 'Error',
+            lastUpdate: 'Error loading'
+          });
+        })
+        .getAttendanceStats();
+    }
+
+    // Update statistics display
+    function updateStatsDisplay(stats) {
+      document.getElementById('todayRecords').textContent = stats.todayRecords || 0;
+      document.getElementById('totalRecords').textContent = stats.totalRecords || 0;
+      document.getElementById('activeEmployees').textContent = stats.activeEmployees || 0;
+      document.getElementById('lastUpdate').textContent = stats.lastUpdate || 'Unknown';
+    }
+
+    // New function to load clock status from Google Sheet
+    function loadClockStatus() {
+      google.script.run
+        .withSuccessHandler(function(status) {
+          const clockInBtn = document.getElementById('clockInBtn');
+          const clockOutBtn = document.getElementById('clockOutBtn');
+
+          // Update Clock In button
+          if (status.ClockIn === 'ON') {
+            clockInBtn.classList.remove('btn-danger');
+            clockInBtn.classList.add('btn-success');
+            clockInBtn.disabled = false;
+          } else {
+            clockInBtn.classList.remove('btn-success');
+            clockInBtn.classList.add('btn-danger');
+            clockInBtn.disabled = true;
+          }
+
+          // Update Clock Out button
+          if (status.ClockOut === 'ON') {
+            clockOutBtn.classList.remove('btn-danger');
+            clockOutBtn.classList.add('btn-success');
+            clockOutBtn.disabled = false;
+          } else {
+            clockOutBtn.classList.remove('btn-success');
+            clockOutBtn.classList.add('btn-danger');
+            clockOutBtn.disabled = true;
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error loading clock status:', error);
+          showAlert('Error loading clock status. Buttons may not reflect current settings.', 'danger');
+        })
+        .getClockStatus();
+    }
+
+    // Check employee status when selection changes
+    function checkEmployeeStatus() {
+      const employeeId = document.getElementById('employeeId').value;
+      const statusDiv = document.getElementById('employeeStatus');
+      const statusContent = document.getElementById('statusContent');
+      
+      if (!employeeId) {
+        statusDiv.style.display = 'none';
+        return;
+      }
+      
+      google.script.run
+        .withSuccessHandler(function(status) {
+          let statusHtml = '';
+          let indicatorClass = '';
+          
+          switch(status.status) {
+            case 'clocked_in':
+              indicatorClass = 'status-clocked-in';
+              statusHtml = `
+                <div><span class="status-indicator ${indicatorClass}"></span><strong>Currently Clocked In</strong></div>
+                <div style="font-size: 0.8rem; margin-top: 5px;">Since: ${status.lastClockIn}</div>
+              `;
+              break;
+            case 'clocked_out':
+              indicatorClass = 'status-clocked-out';
+              statusHtml = `
+                <div><span class="status-indicator ${indicatorClass}"></span><strong>Last Session Complete</strong></div>
+                <div style="font-size: 0.8rem; margin-top: 5px;">
+                  In: ${status.lastClockIn}<br>
+                  Out: ${status.lastClockOut}<br>
+                  Hours: ${status.totalHours}
+                </div>
+              `;
+              break;
+            case 'no_records':
+              indicatorClass = 'status-error';
+              statusHtml = `
+                <div><span class="status-indicator ${indicatorClass}"></span><strong>No Records Found</strong></div>
+                <div style="font-size: 0.8rem; margin-top: 5px;">This employee has no attendance records yet.</div>
+              `;
+              break;
+            default:
+              indicatorClass = 'status-error';
+              statusHtml = `
+                <div><span class="status-indicator ${indicatorClass}"></span><strong>Status Unknown</strong></div>
+                <div style="font-size: 0.8rem; margin-top: 5px;">${status.message}</div>
+              `;
+          }
+          
+          statusContent.innerHTML = statusHtml;
+          statusDiv.style.display = 'block';
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error checking employee status:', error);
+          statusContent.innerHTML = `
+            <div><span class="status-indicator status-error"></span><strong>Error</strong></div>
+            <div style="font-size: 0.8rem; margin-top: 5px;">Unable to check employee status.</div>
+          `;
+          statusDiv.style.display = 'block';
+        })
+        .getEmployeeStatus(employeeId);
+    }
+
+    // Capture GPS coordinates
+    function getGPSCoordinates(callback) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          position => callback([position.coords.latitude, position.coords.longitude]),
+          error => {
+            console.warn('GPS location unavailable:', error);
+            showAlert('GPS location unavailable. Using default location.', 'warning');
+            callback([0, 0]); // Default coordinates if location is unavailable
+          },
+          {
+            timeout: 10000,
+            enableHighAccuracy: true,
+            maximumAge: 300000 // 5 minutes
+          }
+        );
+      } else {
+        showAlert('Geolocation is not supported by this browser.', 'warning');
+        callback([0, 0]);
+      }
+    }
+
+    // Show loading message
+    function showLoadingMessage(show) {
+      const loadingMessage = document.getElementById('loadingMessage');
+      loadingMessage.style.display = show ? 'block' : 'none';
+      
+      // Disable/enable buttons
+      const buttons = document.querySelectorAll('button');
+      buttons.forEach(btn => {
+        btn.disabled = show;
+      });
+    }
+
+    // Show alert message
+    function showAlert(message, type = 'info') {
+      const alertContainer = document.getElementById('alertContainer');
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+      alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+      
+      alertContainer.appendChild(alertDiv);
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        if (alertDiv.parentNode) {
+          alertDiv.remove();
+        }
+      }, 5000);
+    }
+
+    // Clock In
+    function clockIn() {
+      const employeeId = document.getElementById('employeeId').value.trim();
+      if (!employeeId) {
+        showAlert('Please select an Employee ID.', 'warning');
+        return;
+      }
+
+      showLoadingMessage(true);
+
+      getGPSCoordinates(gps => {
+        google.script.run
+          .withSuccessHandler(function(response) {
+            showLoadingMessage(false);
+            
+            if (response && response[0]) {
+              const message = response[0][0];
+              const alertType = message === 'SUCCESS' ? 'success' : 'warning';
+              showAlert(message, alertType);
+              
+              if (message === 'SUCCESS') {
+                // Refresh data after successful clock in
+                setTimeout(() => {
+                  loadAttendanceStats();
+                  checkEmployeeStatus();
+                  loadClockStatus(); // Refresh button status
+                }, 1000);
+              }
+            }
+          })
+          .withFailureHandler(function(error) {
+            showLoadingMessage(false);
+            console.error('Clock in error:', error);
+            showAlert('Error during clock in. Please try again.', 'danger');
+          })
+          .clockIn(employeeId, gps);
+      });
+    }
+
+    // Clock Out
+    function clockOut() {
+      const employeeId = document.getElementById('employeeId').value.trim();
+      if (!employeeId) {
+        showAlert('Please select an Employee ID.', 'warning');
+        return;
+      }
+
+      showLoadingMessage(true);
+
+      getGPSCoordinates(gps => {
+        google.script.run
+          .withSuccessHandler(function(response) {
+            showLoadingMessage(false);
+            
+            if (response && response[0]) {
+              const message = response[0][0];
+              const alertType = message === 'SUCCESS' ? 'success' : 'warning';
+              showAlert(message, alertType);
+              
+              if (message === 'SUCCESS') {
+                // Refresh data after successful clock out
+                setTimeout(() => {
+                  loadAttendanceStats();
+                  checkEmployeeStatus();
+                  loadClockStatus(); // Refresh button status
+                }, 1000);
+              }
+            }
+          })
+          .withFailureHandler(function(error) {
+            showLoadingMessage(false);
+            console.error('Clock out error:', error);
+            showAlert('Error during clock out. Please try again.', 'danger');
+          })
+          .clockOut(employeeId, gps);
+      });
+    }
+
+    // Refresh all data
+    function refreshData() {
+      showAlert('Refreshing data...', 'info');
+      loadEmployeeIDs();
+      loadAttendanceStats();
+      loadClockStatus(); // Refresh button status
+      
+      const employeeId = document.getElementById('employeeId').value;
+      if (employeeId) {
+        checkEmployeeStatus();
+      }
+    }
+
+    // Initialize when page loads
+    window.onload = initializeApp;
+
+    // Clean up interval when page unloads
+    window.onbeforeunload = function() {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  </script>
+</body>
+</html>
+
+

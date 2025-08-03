@@ -1,0 +1,10 @@
+Setting,Status,,,ATTENDANCE,https://script.google.com/macros/s/AKfycbw3MidPFh986qhnCNc4PE5GnM195axnw8HlenMJkfj2LIeVAxn6um1m4eRYBnnJQv3x/exec
+ClockIn,ON,,,,
+ClockOut,ON,,,Deployment ID,AKfycbw3MidPFh986qhnCNc4PE5GnM195axnw8HlenMJkfj2LIeVAxn6um1m4eRYBnnJQv3x
+,,,,,
+,,,,Library,https://script.google.com/macros/library/d/1S7fl55EexQkGaoQnqu9vUQHIh0UWXXhbV-qFwqGMykKhEZtG4xd7D6iU/16
+,,,,,
+,,,,ATTENDANCE REPORT,https://docs.google.com/spreadsheets/d/e/2PACX-1vT3A3RZF7kbiaEhWMTBC3ySx_msaUpIvUJjqNMRVfFkg7T1nevWueSoqDikr417ft63w9NrEJc-yEC3/pubhtml?gid=1873348607&single=true
+,,,,,
+,,,,,
+,,,,,

@@ -1,63 +1,53 @@
-// Configure these with your GitHub details
-const GITHUB_USERNAME = 'hjropemaster'; // or organization name if it's under an org
-const REPO = 'attendance';
-const BRANCH = 'main';
-const FILE_PATH = 'data/sheet-data.csv'; // path in your GitHub repo (prefer subfolder)
-
 function exportSheetToGitHub() {
+  const props = PropertiesService.getScriptProperties();
+  const TOKEN = props.getProperty('GITHUB_TOKEN');
+  if (!TOKEN) throw new Error("❗ GitHub token not set. See step below.");
+
+  const REPO = "hjropemaster/sheet-export"; // change to your repo
+  const BRANCH = "main"; // or master
+  const FILE_PATH = "data.csv"; // file name in GitHub
+
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   const data = sheet.getDataRange().getValues();
+  const csv = data.map(row =>
+    row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+  ).join('\n');
+  const encodedContent = Utilities.base64Encode(csv);
 
-  // Filter out any rows that may contain secrets like GitHub tokens
-  const filteredData = data.filter(row =>
-    !row.some(cell => typeof cell === 'string' && cell.includes('ghp_'))
-  );
-  const csv = filteredData.map(row => row.join(',')).join('\n');
-
-  const url = `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO}/contents/${FILE_PATH}`;
-
-  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
-  Logger.log("GitHub Token: " + token); // Debug: check if token is being loaded
-
-  // First, get the current file SHA
-  const getOptions = {
-    method: 'get',
-    headers: {
-      Authorization: 'token ' + token
-    },
-    muteHttpExceptions: true
+  const headers = {
+    Authorization: `Bearer ${TOKEN}`,
+    Accept: "application/vnd.github.v3+json"
   };
 
-  const getRes = UrlFetchApp.fetch(url, getOptions);
-  const getResCode = getRes.getResponseCode();
+  const url = `https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`;
 
+  // Get file SHA if it already exists
   let sha = null;
-  if (getResCode === 200) {
-    const content = JSON.parse(getRes.getContentText());
-    sha = content.sha;
-  } else if (getResCode !== 404) {
-    Logger.log("Error fetching file: " + getRes.getContentText());
-    return;
-  }
+  try {
+    const getResp = UrlFetchApp.fetch(`${url}?ref=${BRANCH}`, { headers });
+    sha = JSON.parse(getResp).sha;
+  } catch (_) { /* ignore 404 */ }
 
-  // Now prepare the PUT payload
   const payload = {
-    message: '📤 Update sheet CSV from Google Sheets',
-    content: Utilities.base64Encode(csv),
-    branch: BRANCH
+    message: `Updated from Google Sheets at ${new Date().toISOString()}`,
+    content: encodedContent,
+    branch: BRANCH,
+    ...(sha && { sha })
   };
-  if (sha) payload.sha = sha;
 
-  const putOptions = {
-    method: 'put',
-    contentType: 'application/json',
-    headers: {
-      Authorization: 'token ' + token
-    },
+  const response = UrlFetchApp.fetch(url, {
+    method: "put",
+    headers,
+    contentType: "application/json",
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
-  };
+  });
 
-  const res = UrlFetchApp.fetch(url, putOptions);
-  Logger.log(res.getContentText());
+  const code = response.getResponseCode();
+  const result = response.getContentText();
+  if (code >= 200 && code < 300) {
+    Logger.log("✅ Success:\n" + result);
+  } else {
+    throw new Error("❌ GitHub error:\n" + result);
+  }
 }

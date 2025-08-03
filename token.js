@@ -1,303 +1,211 @@
-/**
- * GitHub Access Diagnostic Script
- * 
- * This script helps diagnose why you're getting "Repository not found" errors
- * Run these functions one by one to identify the issue
- */
+// === CONFIGURATION ===
+const GITHUB_USERNAME = 'hjropemaster';
+const REPO_NAME = 'attendance';
+const BRANCH = 'main';
+const EXPORT_FOLDER = 'exports'; // GitHub folder path
+const FILE_PREFIX = 'sheet_';   // Optional: file name prefix
 
-// Test different repository configurations
-const TEST_CONFIGS = [
-  { username: 'hjropemaster', repo: 'attendance' },
-  { username: 'HJROPEMASTER', repo: 'attendance' },
-  { username: 'hjropemaster', repo: 'ATTENDANCE' },
-  { username: 'HJROPEMASTER', repo: 'ATTENDANCE' }
-];
+// === MENU SETUP ===
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu("📤 GitHub Tools")
+    .addItem("Export Sheet to GitHub", "exportSheetToGitHub")
+    .addItem("🔍 Run Diagnostics", "runFullDiagnostic")
+    .addToUi();
+}
 
-/**
- * Step 1: Test if your GitHub token is valid at all
- */
-function testGitHubTokenBasic() {
-  console.log('🔍 Testing basic GitHub token validity...');
-  
+// === EXPORT FUNCTION ===
+function exportSheetToGitHub() {
   const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
-  
-  if (!token) {
-    console.error('❌ No GitHub token found in Script Properties');
-    return false;
-  }
-  
-  console.log(`🔑 Token found, length: ${token.length} characters`);
-  console.log(`🔑 Token starts with: ${token.substring(0, 10)}...`);
-  
-  // Test basic GitHub API access
-  const url = 'https://api.github.com/user';
-  
-  const options = {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'Google-Apps-Script-Diagnostic'
-    },
-    muteHttpExceptions: true
+  if (!token) return SpreadsheetApp.getUi().alert('❌ No GITHUB_TOKEN set in script properties.');
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const fileName = `${EXPORT_FOLDER}/${FILE_PREFIX}${dateStr}.csv`;
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = sheet.getDataRange().getValues();
+  const csv = data.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const encoded = Utilities.base64Encode(csv);
+
+  const url = `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${fileName}`;
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github.v3+json",
+    'User-Agent': 'Google-Apps-Script'
   };
-  
+
+  let sha = null;
   try {
-    const response = UrlFetchApp.fetch(url, options);
-    const responseCode = response.getResponseCode();
-    const responseText = response.getContentText();
-    
-    console.log(`📡 GitHub API Response Code: ${responseCode}`);
-    
-    if (responseCode === 200) {
-      const user = JSON.parse(responseText);
-      console.log('✅ Token is valid!');
-      console.log(`👤 Authenticated as: ${user.login}`);
-      console.log(`📧 Email: ${user.email || 'Not public'}`);
-      console.log(`🔒 Token scopes: Check your token permissions`);
-      return true;
-    } else if (responseCode === 401) {
-      console.error('❌ Token is invalid or expired');
-      console.error('Response:', responseText);
-      return false;
-    } else {
-      console.error(`❌ Unexpected response: ${responseCode}`);
-      console.error('Response:', responseText);
-      return false;
+    const existing = UrlFetchApp.fetch(`${url}?ref=${BRANCH}`, { headers, muteHttpExceptions: true });
+    if (existing.getResponseCode() === 200) {
+      sha = JSON.parse(existing.getContentText()).sha;
     }
-    
-  } catch (error) {
-    console.error('❌ Error testing token:', error.message);
-    return false;
-  }
-}
+  } catch (_) {}
 
-/**
- * Step 2: Test access to your specific repository with different name variations
- */
-function testRepositoryAccess() {
-  console.log('🔍 Testing repository access with different name variations...');
-  
-  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
-  
-  if (!token) {
-    console.error('❌ No GitHub token found');
-    return;
-  }
-  
-  for (const config of TEST_CONFIGS) {
-    console.log(`\n🧪 Testing: ${config.username}/${config.repo}`);
-    
-    const url = `https://api.github.com/repos/${config.username}/${config.repo}`;
-    
-    const options = {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'Google-Apps-Script-Diagnostic'
-      },
-      muteHttpExceptions: true
-    };
-    
-    try {
-      const response = UrlFetchApp.fetch(url, options);
-      const responseCode = response.getResponseCode();
-      
-      if (responseCode === 200) {
-        const repo = JSON.parse(response.getContentText());
-        console.log(`✅ SUCCESS! Repository found: ${repo.full_name}`);
-        console.log(`🔒 Private: ${repo.private}`);
-        console.log(`📝 Description: ${repo.description || 'No description'}`);
-        console.log(`🌟 Stars: ${repo.stargazers_count}`);
-        console.log(`🔧 Default branch: ${repo.default_branch}`);
-        
-        // Test write access
-        testWriteAccess(config.username, config.repo, token);
-        return config;
-        
-      } else if (responseCode === 404) {
-        console.log(`❌ Repository not found: ${config.username}/${config.repo}`);
-      } else if (responseCode === 403) {
-        console.log(`🔒 Access forbidden: ${config.username}/${config.repo} (private repo or insufficient permissions)`);
-      } else {
-        console.log(`⚠️ Unexpected response ${responseCode} for: ${config.username}/${config.repo}`);
-      }
-      
-    } catch (error) {
-      console.error(`❌ Error testing ${config.username}/${config.repo}:`, error.message);
-    }
-  }
-  
-  console.log('\n❌ No accessible repository found with any name variation');
-}
-
-/**
- * Step 3: Test write access to the repository
- */
-function testWriteAccess(username, repo, token) {
-  console.log(`\n🔍 Testing write access to ${username}/${repo}...`);
-  
-  // Try to get a file that definitely doesn't exist to test write permissions
-  const testUrl = `https://api.github.com/repos/${username}/${repo}/contents/test-write-access-${Date.now()}.txt`;
-  
-  const options = {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'Google-Apps-Script-Diagnostic'
-    },
-    muteHttpExceptions: true
+  const payload = {
+    message: `📤 Exported from Google Sheets on ${new Date().toISOString()}`,
+    content: encoded,
+    branch: BRANCH,
+    ...(sha && { sha })
   };
-  
-  try {
-    const response = UrlFetchApp.fetch(testUrl, options);
-    const responseCode = response.getResponseCode();
-    
-    if (responseCode === 404) {
-      console.log('✅ Write access test passed (404 expected for non-existent file)');
-    } else if (responseCode === 403) {
-      console.log('❌ Write access denied (403 Forbidden)');
-      console.log('🔧 Your token may not have "repo" scope or write permissions');
-    } else {
-      console.log(`⚠️ Unexpected response for write test: ${responseCode}`);
-    }
-    
-  } catch (error) {
-    console.error('❌ Error testing write access:', error.message);
-  }
-}
 
-/**
- * Step 4: List your accessible repositories
- */
-function listMyRepositories() {
-  console.log('🔍 Listing repositories accessible with your token...');
-  
-  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
-  
-  if (!token) {
-    console.error('❌ No GitHub token found');
-    return;
-  }
-  
-  const url = 'https://api.github.com/user/repos?per_page=100&sort=updated';
-  
-  const options = {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'Google-Apps-Script-Diagnostic'
-    },
+  const response = UrlFetchApp.fetch(url, {
+    method: 'put',
+    contentType: 'application/json',
+    headers,
+    payload: JSON.stringify(payload),
     muteHttpExceptions: true
-  };
-  
-  try {
-    const response = UrlFetchApp.fetch(url, options);
-    const responseCode = response.getResponseCode();
-    
-    if (responseCode === 200) {
-      const repos = JSON.parse(response.getContentText());
-      console.log(`✅ Found ${repos.length} accessible repositories:`);
-      
-      repos.forEach((repo, index) => {
-        console.log(`${index + 1}. ${repo.full_name} (${repo.private ? 'private' : 'public'})`);
-        
-        // Check if this might be the attendance repo
-        if (repo.name.toLowerCase().includes('attendance') || 
-            repo.full_name.toLowerCase().includes('attendance')) {
-          console.log(`   🎯 POTENTIAL MATCH: ${repo.full_name}`);
-        }
-      });
-      
-    } else {
-      console.error(`❌ Failed to list repositories: ${responseCode}`);
-      console.error(response.getContentText());
-    }
-    
-  } catch (error) {
-    console.error('❌ Error listing repositories:', error.message);
+  });
+
+  const code = response.getResponseCode();
+  const resText = response.getContentText();
+  if (code >= 200 && code < 300) {
+    SpreadsheetApp.getUi().alert(`✅ Exported to GitHub:\n📁 ${fileName}`);
+  } else {
+    SpreadsheetApp.getUi().alert(`❌ Export failed (${code}):\n${resText}`);
   }
 }
 
-/**
- * Step 5: Test the exact API call that's failing
- */
-function testExactAPICall() {
-  console.log('🔍 Testing the exact API call that\'s failing...');
-  
-  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
-  const username = 'hjropemaster';
-  const repo = 'attendance';
-  const filePath = 'data/sheet-data.csv';
-  
-  const url = `https://api.github.com/repos/${username}/${repo}/contents/${filePath}`;
-  
-  console.log(`🔗 Testing URL: ${url}`);
-  
-  const options = {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'Google-Apps-Script-Diagnostic'
-    },
-    muteHttpExceptions: true
-  };
-  
-  try {
-    const response = UrlFetchApp.fetch(url, options);
-    const responseCode = response.getResponseCode();
-    const responseText = response.getContentText();
-    
-    console.log(`📡 Response Code: ${responseCode}`);
-    console.log(`📄 Response: ${responseText}`);
-    
-    if (responseCode === 404) {
-      console.log('ℹ️ This could mean:');
-      console.log('  1. Repository doesn\'t exist');
-      console.log('  2. File doesn\'t exist (normal for first run)');
-      console.log('  3. No access to repository');
-    }
-    
-  } catch (error) {
-    console.error('❌ Error with exact API call:', error.message);
-  }
-}
+// === DIAGNOSTIC FUNCTIONS ===
 
-/**
- * Run all diagnostic tests in sequence
- */
 function runFullDiagnostic() {
-  console.log('🚀 Running full GitHub diagnostic...\n');
-  
-  console.log('='.repeat(50));
-  console.log('STEP 1: Testing basic token validity');
-  console.log('='.repeat(50));
-  const tokenValid = testGitHubTokenBasic();
-  
-  if (!tokenValid) {
-    console.log('\n❌ Token is invalid. Please generate a new GitHub token.');
-    return;
-  }
-  
-  console.log('\n' + '='.repeat(50));
-  console.log('STEP 2: Testing repository access');
-  console.log('='.repeat(50));
+  console.log('🚀 Running GitHub Diagnostic...');
+  if (!testGitHubTokenBasic()) return;
   testRepositoryAccess();
-  
-  console.log('\n' + '='.repeat(50));
-  console.log('STEP 3: Listing your repositories');
-  console.log('='.repeat(50));
   listMyRepositories();
-  
-  console.log('\n' + '='.repeat(50));
-  console.log('STEP 4: Testing exact failing API call');
-  console.log('='.repeat(50));
   testExactAPICall();
-  
-  console.log('\n🏁 Diagnostic complete! Check the logs above for issues.');
 }
 
+function testGitHubTokenBasic() {
+  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
+  if (!token) {
+    console.error('❌ No GitHub token set');
+    return false;
+  }
+
+  const options = {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github.v3+json",
+      'User-Agent': 'Google-Apps-Script'
+    },
+    muteHttpExceptions: true
+  };
+
+  const response = UrlFetchApp.fetch("https://api.github.com/user", options);
+  const code = response.getResponseCode();
+  const text = response.getContentText();
+
+  if (code === 200) {
+    const user = JSON.parse(text);
+    console.log(`✅ Token valid. Logged in as: ${user.login}`);
+    return true;
+  } else {
+    console.error(`❌ Invalid token (${code}): ${text}`);
+    return false;
+  }
+}
+
+function testRepositoryAccess() {
+  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
+  const repoURL = `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}`;
+
+  const options = {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github.v3+json",
+      'User-Agent': 'Google-Apps-Script'
+    },
+    muteHttpExceptions: true
+  };
+
+  const response = UrlFetchApp.fetch(repoURL, options);
+  const code = response.getResponseCode();
+  const body = response.getContentText();
+
+  if (code === 200) {
+    console.log(`✅ Repo found: ${GITHUB_USERNAME}/${REPO_NAME}`);
+    testWriteAccess(GITHUB_USERNAME, REPO_NAME, token);
+  } else if (code === 404) {
+    console.log(`❌ Repo not found: ${GITHUB_USERNAME}/${REPO_NAME}`);
+  } else {
+    console.log(`⚠️ Repo access error (${code}): ${body}`);
+  }
+}
+
+function testWriteAccess(username, repo, token) {
+  const url = `https://api.github.com/repos/${username}/${repo}/contents/test-write-${Date.now()}.txt`;
+  const options = {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github.v3+json",
+      'User-Agent': 'Google-Apps-Script'
+    },
+    muteHttpExceptions: true
+  };
+
+  const response = UrlFetchApp.fetch(url, options);
+  const code = response.getResponseCode();
+  if (code === 404) {
+    console.log('✅ Write access test passed (expected 404)');
+  } else if (code === 403) {
+    console.log('❌ No write access (403 Forbidden)');
+  } else {
+    console.log(`⚠️ Unexpected response: ${code}`);
+  }
+}
+
+function listMyRepositories() {
+  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
+  const url = 'https://api.github.com/user/repos?per_page=100';
+
+  const options = {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github.v3+json",
+      'User-Agent': 'Google-Apps-Script'
+    },
+    muteHttpExceptions: true
+  };
+
+  const response = UrlFetchApp.fetch(url, options);
+  const code = response.getResponseCode();
+  if (code !== 200) {
+    console.error(`❌ Failed to list repos (${code})`);
+    return;
+  }
+
+  const repos = JSON.parse(response.getContentText());
+  console.log(`✅ Found ${repos.length} repos`);
+  repos.forEach(r => {
+    console.log(`- ${r.full_name} (${r.private ? 'private' : 'public'})`);
+  });
+}
+
+function testExactAPICall() {
+  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
+  const filePath = `${EXPORT_FOLDER}/test-dummy.csv`;
+  const url = `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${filePath}`;
+
+  const options = {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github.v3+json",
+      'User-Agent': 'Google-Apps-Script'
+    },
+    muteHttpExceptions: true
+  };
+
+  const response = UrlFetchApp.fetch(url, options);
+  const code = response.getResponseCode();
+  const text = response.getContentText();
+
+  console.log(`📡 API call to ${url}`);
+  console.log(`📄 Response Code: ${code}`);
+  console.log(`📄 Body: ${text}`);
+}
